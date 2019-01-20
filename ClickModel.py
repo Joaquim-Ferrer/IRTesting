@@ -2,6 +2,7 @@ import random
 import numpy as np
 from YandexParser import parseYandexLog
 import Session
+import json
 
 #CHECK IF MAX AT IS OK WITH SIMULATE CLICK AND STUFF AS WE ARE TRAINING FOR 10 RANKINGS AND USING ONLY MAX 6
 class EMX():
@@ -31,18 +32,20 @@ class BinaryRelevancePBM:
         return chosen_ranking
 
     #initial_attraction/initial_examination is a function that returns the initial attraction of a query_id, document_id pair
-    def estimate_parameters(self, sessions, n_iterations=100, at=10):
+    def estimate_parameters(self, sessions, at=10):
         p_examination = [EMX()  for i in range(at)]
         p_attractiveness = {} #Dictionary that maps from (query_id, document_id) to [[sum, count], old_attractiveness]
-
-        for i in range(n_iterations):
+        old_examination = np.zeros(at)
+        tol = 0.00001
+        while np.mean([abs(p_examination[i].value() - old_examination[i]) for i in at]) > tol:
+            old_examination = [p.value() for p in p_examination]
             for s in sessions:
                 query_id = s.query_id
                 for rank, document_id in enumerate(s.results):
                     attractiveness = p_attractiveness.get((query_id, document_id), EMX())
 
-                    oattr = attractiveness.value()
-                    oexam = p_examination[rank].value()
+                    old_attr = attractiveness.value()
+                    old_exam = p_examination[rank].value()
 
                     attractiveness.count += 1.
                     p_examination[rank].count += 1.
@@ -51,15 +54,13 @@ class BinaryRelevancePBM:
                         attractiveness.sum += 1.
                         p_examination[rank].sum += 1.
                     else:
-                        attractiveness.sum      += (1.-oexam) * oattr / (1. - oattr * oexam)
-                        p_examination[rank].sum += (1.-oattr) * oexam / (1. - oattr * oexam)
+                        attractiveness.sum      += (1.-old_exam) * old_attr / (1. - old_attr * old_exam)
+                        p_examination[rank].sum += (1.-old_attr) * old_exam / (1. - old_attr * old_exam)
                     p_attractiveness[(query_id, document_id)] = attractiveness
 
             print("EXAMINATION")
-            #Update old values and reset count and sum
             for rank in range(at):
                 print('{:.3e}   {:.3e} {:.3e}'.format(p_examination[rank].sum, p_examination[rank].count, p_examination[rank].value()))
-
 
             print("ATTRACTION")
             i=0
@@ -68,3 +69,5 @@ class BinaryRelevancePBM:
                     print('{:.3e}   {:.3e} {:.3e}'.format(value.sum, value.count, value.value()))
                 i+=1
             print("\n\n\n")
+        with open('p_examinations.json', 'w') as fp:
+            json.dump([p.value() for p in p_examination], fp)
