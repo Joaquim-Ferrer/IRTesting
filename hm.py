@@ -1,7 +1,9 @@
 #!/bin/python
+import math
 import numpy as np
 from itertools import product
 import random
+import scipy.stats
 
 AT = 3
 MAXREL = 1
@@ -50,7 +52,7 @@ def generate_same_documents_sets(rel_pair, same_as=([None, None, None], [None, N
         if rel_pair[0][at] == rel_r and idx not in same_as[0]:
             same_as[0][at] = idx
             same_as[1][idx] = at
-            yield from generate_same_documents_sets(rel_pair, same_as=same_as, _at=at+1)
+            yield from generate_same_documents_sets(rel_pair, same_as=same_as, at=at+1)
             same_as[0][at] = None
             same_as[1][idx] = None
 
@@ -85,7 +87,7 @@ def generate_probabilistic_interleavings(rel_pair, at=AT):
     yield from generate_interleaving(rel_pair, initDist, chooseFunction)
 
 def generate_DERR_bins():
-    filled_bins = [[] for i in range(len(BIN_LABELS))] # list of [(relevance_E, relevance_P), ...]. Each list corresponds to the bin with limits in bin_labels
+    filled_bins = [[] for _ in range(len(BIN_LABELS))] # list of [(relevance_E, relevance_P), ...]. Each list corresponds to the bin with limits in bin_labels
     for relevances_E, relevances_P in generate_all_pairs():
         err_E = calculate_ERR(relevances_E)
         err_P = calculate_ERR(relevances_P)
@@ -95,17 +97,40 @@ def generate_DERR_bins():
             filled_bins[bIdx].append((relevances_E, relevances_P))
     return filled_bins
 
+def click(relevances):
+    return random.randint(0,2)
+
+def victory_proportion(rel_pair):
+    victories = [0,0]
+    for relevances, attribution in generate_team_draft_interleavings(rel_pair):
+        clickIdx = click(relevances)
+        victories[int(attribution[clickIdx])] += 1
+    return victories[1]/(victories[0] + victories[1])
+
+def estimate_sample_size(p1, alpha=0.05, beta=0.95, p0=0.5):
+    z_alpha = scipy.stats.norm.ppf(alpha)
+    z_beta = -scipy.stats.norm.ppf(beta)
+    nDash = ((z_alpha * math.sqrt(p0 * (1-p1)) + z_beta * math.sqrt(p1 * (1-p1))) / (p1 - p0))**2
+    n = nDash + (1 / abs(p1 - p0))
+    return n
+
 def main():
     bins = generate_DERR_bins()
-    I = 0
     for bIdx, _bin in enumerate(bins):
-        print(BIN_LABELS[bIdx])
+        if len(_bin) == 0:
+            print('Empty bin: {}'.format(BIN_LABELS[bIdx]))
+            continue
+        Ns = []
         for rel_pair in _bin:
-            for relevances, attribution in generate_team_draft_interleavings(rel_pair):
-                I += 1
-                pass
-                # print(relevances)
-    print(I)
+            pVictory = victory_proportion(rel_pair) + 0.1
+            n = estimate_sample_size(pVictory)
+            Ns.append(n)
+        Ns = np.array(Ns)
+        print('{},  Min: {},    Mean: {},   Max: {}'.format(
+            BIN_LABELS[bIdx],
+            Ns.min(),
+            Ns.mean(),
+            Ns.max()))
 
 
 if __name__ == "__main__":
