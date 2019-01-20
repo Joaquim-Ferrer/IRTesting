@@ -3,10 +3,8 @@ import math
 import numpy as np
 from itertools import product
 import random
-from Session import Session
-from YandexParser import parseYandexLog
-from ClickModel import BinaryRelevancePBM
 import scipy.stats
+import json
 
 AT = 3
 MAXREL = 1
@@ -118,9 +116,6 @@ def estimate_sample_size(p1, alpha=0.05, beta=0.95, p0=0.5):
     return n
 
 def main():
-    sessions = parseYandexLog("./YandexRelPredChallenge.txt")
-    Pbm = BinaryRelevancePBM(3)
-    Pbm.estimate_parameters(sessions)
     bins = generate_DERR_bins()
     for bIdx, _bin in enumerate(bins):
         if len(_bin) == 0:

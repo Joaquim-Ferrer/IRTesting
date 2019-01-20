@@ -6,13 +6,12 @@ import json
 
 #CHECK IF MAX AT IS OK WITH SIMULATE CLICK AND STUFF AS WE ARE TRAINING FOR 10 RANKINGS AND USING ONLY MAX 6
 class EMX():
-    PROB_MIN = 0.000001
     def __init__(self, sum=1., count=2.):
         self.sum = sum
         self.count = count
 
     def value(self):
-        return min(self.sum / float(self.count), 1 - self.PROB_MIN)
+        return min(self.sum / float(self.count), 0.999999)
 
 class BinaryRelevancePBM:
     def __init__(self, max_at=6, p_attraction=0.9):
@@ -69,5 +68,15 @@ class BinaryRelevancePBM:
                     print('{:.3e}   {:.3e} {:.3e}'.format(value.sum, value.count, value.value()))
                 i+=1
             print("\n\n\n")
-        with open('p_examinations.json', 'w') as fp:
-            json.dump([p.value() for p in p_examination], fp)
+        return [p.value() for p in p_examination]
+
+def main():
+    sessions = parseYandexLog("./YandexRelPredChallenge.txt")
+    print('PARSED YANDEX CLICK LOG')
+    Pbm = BinaryRelevancePBM(3)
+    prob_examination = Pbm.estimate_parameters(sessions)
+    with open('p_examinations.json', 'w') as fp:
+        json.dump(prob_examination, fp)
+
+if __name__ == '__main__':
+    main()
