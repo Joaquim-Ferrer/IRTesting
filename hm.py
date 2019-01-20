@@ -2,6 +2,9 @@
 import numpy as np
 from itertools import product
 import random
+from Session import Session
+from YandexParser import parseYandexLog
+from ClickModel import BinaryRelevancePBM
 
 GIDX = 0
 at = 3
@@ -101,17 +104,16 @@ def generate_DERR_bins():
     return filled_bins
 
 def main():
+    sessions = parseYandexLog("./YandexRelPredChallenge.txt")
+    Pbm = BinaryRelevancePBM(3)
+    Pbm.estimate_parameters(sessions)
     bins = generate_DERR_bins()
-    I = 0
     for bIdx, _bin in enumerate(bins):
         print(bin_labels[bIdx])
         for pair in _bin:
             for relevances, attribution in generate_team_draft_interleavings(pair[0], pair[1]):
-                I += 1
+                #print(relevances, attribution)
                 pass
-                # print(relevances)
-    print(I)
-
 
 if __name__ == "__main__":
     main()
