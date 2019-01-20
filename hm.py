@@ -3,13 +3,10 @@ import math
 import numpy as np
 from itertools import product
 import random
-<<<<<<< HEAD
 from Session import Session
 from YandexParser import parseYandexLog
 from ClickModel import BinaryRelevancePBM
-=======
 import scipy.stats
->>>>>>> 600df801ae87bc0dd0e2843b2b86e95fe45f55f8
 
 AT = 3
 MAXREL = 1

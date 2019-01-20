@@ -8,10 +8,6 @@ class Session:
         self.clicks_rank = [False for i in range(len(results))]
 
     #The document_id maps to a result of self.results
-    def add_click(self, document_id) -> str:
+    def click(self, document_id):
+        self.clicks_rank[self.results.index(document_id)] = True
         self.clicks_id.append(document_id)
-        try:
-            self.clicks_rank[self.results.index(document_id)] = True
-        except ValueError:
-            return False
-        return True
