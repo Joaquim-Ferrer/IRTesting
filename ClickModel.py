@@ -14,21 +14,29 @@ class EMX():
         return min(self.sum / float(self.count), 0.999999)
 
 class BinaryRelevancePBM:
-    def __init__(self, max_at=6, p_attraction=0.9):
+    def __init__(self, max_at=3, p_attraction=0.95, file_p_examinations=None):
         self.max_at = max_at
-        self.p_examination = np.random.random(max_at)
         self.p_attraction = p_attraction
+        self.p_examination = np.random.random(max_at)
+        if file_p_examinations != None:
+            with open(file_p_examinations, "r") as f:
+                self.p_examination = json.load(f)
 
-    def click_probabilities(self, relevances):
+    def get_click_probabilities(self, relevances):
         p_attraction = np.array([self.p_attraction if relevance == 1 else 1-self.p_attraction for relevance in relevances])
         cDist = p_attraction * self.p_examination[:len(relevances)]
         return cDist
 
-    def simulate_click(self, relevances):
-        cDist = self.click_probabilities(relevances)
+    def simulate_first_click(self, relevances):
+        cDist = self.get_click_probabilities(relevances)
         cDist /= cDist.sum()
         chosen_ranking = np.random.choice(len(relevances), p = cDist)
         return chosen_ranking
+
+    #Returns list of boleeans stating if a document was clicked
+    def get_clicks(self, relevances):
+        cDist = self.get_click_probabilities(relevances)
+        return np.random.binomial(len(relevances), cDist)
 
     #initial_attraction/initial_examination is a function that returns the initial attraction of a query_id, document_id pair
     def estimate_parameters(self, sessions, at=10):
@@ -36,7 +44,7 @@ class BinaryRelevancePBM:
         p_attractiveness = {} #Dictionary that maps from (query_id, document_id) to [[sum, count], old_attractiveness]
         old_examination = np.zeros(at)
         tol = 0.00001
-        while np.mean([abs(p_examination[i].value() - old_examination[i]) for i in at]) > tol:
+        while np.mean([abs(p_examination[i].value() - old_examination[i]) for i in range(at)]) > tol:
             old_examination = [p.value() for p in p_examination]
             for s in sessions:
                 query_id = s.query_id
