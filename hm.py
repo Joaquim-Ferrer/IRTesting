@@ -62,7 +62,7 @@ def prob_softmax(at, tau = 3):
     ranks = 1/((np.array(range(at)) + 1)**tau)
     return ranks
 
-def generate_interleaving(rel_pair, initDist, chooseFunction, k=600, at=AT):
+def generate_interleaving(rel_pair, initDist, chooseFunction, k=50, at=AT):
     for same_as, _ in product(generate_same_documents_sets(rel_pair), range(k)):
         probDistr = initDist.copy()
         relevances, attribution = np.zeros(at), np.zeros(at)
@@ -78,7 +78,7 @@ def generate_interleaving(rel_pair, initDist, chooseFunction, k=600, at=AT):
             attribution[i] = R
         yield relevances, attribution
 
-def generate_team_draft_interleavings(rel_pair, k=50, at=AT):
+def generate_team_draft_interleavings(rel_pair, at=AT):
     initDist = np.ones((2,at),bool)
     chooseFunction = lambda probDistr, R: probDistr[R].argmax()
     yield from generate_interleaving(rel_pair, initDist, chooseFunction)
@@ -139,19 +139,19 @@ def main():
         Ns = []
         pVictorys = []
         for rel_pair in _bin:
-            pVictory = victory_proportion(rel_pair, pbm, interleaving_generation=generate_probabilistic_interleavings)
+            pVictory = victory_proportion(rel_pair, pbm, interleaving_generation=generate_team_draft_interleavings)
             n = estimate_sample_size(pVictory)
             Ns.append(n)
             pVictorys.append(pVictory)
         Ns = np.array(Ns)
         pVictorys = np.array(pVictorys)
-        for i in range(len(Ns)):
-            print(_bin[i], Ns[i], pVictorys[i])
-        print('{},  MeanPWins: {}, Min: {},    Mean: {},   Max: {}'.format(
+        # for i in range(len(Ns)):
+        #     print(_bin[i], Ns[i], pVictorys[i])
+        print('{}\t\tMeanPWins: {: 3.2f}, Min: {: 3.2f}, Median: {: 7.2f}, Max: {: 7.2f}'.format(
             BIN_LABELS[bIdx],
             pVictorys.mean(),
             Ns.min(),
-            Ns.mean(),
+            np.median(Ns),
             Ns.max()))
 
 
