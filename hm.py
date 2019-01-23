@@ -5,12 +5,14 @@ from itertools import product
 import random
 import scipy.stats
 import json
-from ClickModel import BinaryRelevancePBM
+from ClickModel import BinaryRelevancePBM, RCM
+import sys
 
 AT = 3
 MAXREL = 1
 #Bin labels include the first and exclude the last.
-BIN_LABELS = [[0.05, 0.1], [0.1,0.2], [0.2,0.3], [0.3,0.4], [0.4,0.5], [0.5,0.6], [0.6,0.7], [0.8,0.9], [0.9,0.95]]
+BIN_LABELS = [[0.05, 0.1], [0.1,0.2], [0.2,0.3], [0.3,0.4], [0.4,0.5], [0.5,0.6], [0.6,0.7], [0.7, 0.8], [0.8,0.9], [0.9,0.95]]
+
 
 def relevance_combinations(relevances, at=0):
     for rel in range(MAXREL + 1):
@@ -62,7 +64,7 @@ def prob_softmax(at, tau = 3):
     ranks = 1/((np.array(range(at)) + 1)**tau)
     return ranks
 
-def generate_interleaving(rel_pair, initDist, chooseFunction, k=50, at=AT):
+def generate_interleaving(rel_pair, initDist, chooseFunction, k=2000, at=AT):
     for same_as, _ in product(generate_same_documents_sets(rel_pair), range(k)):
         probDistr = initDist.copy()
         relevances, attribution = np.zeros(at), np.zeros(at)
@@ -102,7 +104,7 @@ def generate_DERR_bins():
 def click(relevances):
     return random.randint(0,2)
 
-def victory_proportion(rel_pair, click_model, n_impressions_per_interleaving=50, interleaving_generation=generate_team_draft_interleavings):
+def victory_proportion(rel_pair, click_model, n_impressions_per_interleaving=70, interleaving_generation=generate_team_draft_interleavings):
     victories = [0,0]
     for relevances, attribution in interleaving_generation(rel_pair):
         #clicks are a list of booleans that represent whether that rank was clicked or not
@@ -130,7 +132,25 @@ def estimate_sample_size(p1, alpha=0.05, beta=0.90, p0=0.5):
     return n
 
 def main():
-    pbm = BinaryRelevancePBM(file_p_examinations="p_examinations.json")
+    interleaving_mode = sys.argv[1]
+    model_mode = sys.argv[2]
+    interleaving_generation = None
+    click_model = None
+    
+    if interleaving_mode == "0":
+        print("Probabilistiv Interleaving")
+        interleaving_generation = generate_probabilistic_interleavings
+    elif interleaving_mode == "1":
+        print("Team Draft Interleaving")
+        interleaving_generation = generate_team_draft_interleavings
+    
+    if model_mode == "0":
+        print("PBM")
+        click_model = BinaryRelevancePBM(file_p_examinations="p_examinations.json")
+    elif model_mode == "1":
+        print("RAndom Click Model")
+        click_model = RCM()
+    
     bins = generate_DERR_bins()
     for bIdx, _bin in enumerate(bins):
         if len(_bin) == 0:
@@ -139,17 +159,15 @@ def main():
         Ns = []
         pVictorys = []
         for rel_pair in _bin:
-            pVictory = victory_proportion(rel_pair, pbm, interleaving_generation=generate_team_draft_interleavings)
+            pVictory = victory_proportion(rel_pair, click_model, interleaving_generation=interleaving_generation)
             n = estimate_sample_size(pVictory)
             Ns.append(n)
             pVictorys.append(pVictory)
         Ns = np.array(Ns)
         pVictorys = np.array(pVictorys)
-        # for i in range(len(Ns)):
-        #     print(_bin[i], Ns[i], pVictorys[i])
         print('{}\t\tMeanPWins: {: 3.2f}, Min: {: 3.2f}, Median: {: 7.2f}, Max: {: 7.2f}'.format(
             BIN_LABELS[bIdx],
-            pVictorys.mean(),
+            np.median(pVictorys),
             Ns.min(),
             np.median(Ns),
             Ns.max()))
