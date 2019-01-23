@@ -18,6 +18,39 @@ MAXREL = 1
 #Bin labels include the first and exclude the last.
 BIN_LABELS = [[0.05, 0.1], [0.1,0.2], [0.2,0.3], [0.3,0.4], [0.4,0.5], [0.5,0.6], [0.6,0.7], [0.7, 0.8], [0.8,0.9], [0.9,0.95]]
 
+class ClickSession:
+    #ClickSession is unique for the pair session id and query id
+    def __init__(self, _id, query_id, results):
+        self._id = _id
+        self.query_id = query_id
+        self.results = results #List of document ids
+        self.clicks_id = []
+        self.clicks_rank = [False for i in range(len(results))]
+
+    #The document_id maps to a result of self.results
+    def click(self, document_id):
+        self.clicks_rank[self.results.index(document_id)] = True
+        self.clicks_id.append(document_id)
+
+def parse_log(filename):
+    sessions = []
+    with open(filename, 'r') as fp:
+        last_id = -1
+        for line in fp:
+            line = line.split()
+            if line[2] == "Q":
+                _id = line[0]
+                last_id = _id
+                query_id = line[3]
+                results = line[5:]
+                sessions.append(ClickSession(_id, query_id, results))
+            if line[2] == "C":
+                document_id = line[3]
+                i = -1
+                while sessions[i]._id == last_id and document_id not in sessions[i].results:
+                    i -= 1
+                sessions[i].click(document_id)
+    return sessions
 
 class ClickModel(ABC):
 
@@ -155,7 +188,7 @@ def generate_document_overlaps(rel_pair, same_as=([None, None, None], [None, Non
             same_as[0][at] = None
             same_as[1][idx] = None
 
-def interleave(rel_pair, method, k=500, at=AT):
+def interleave(rel_pair, method, k=2000, at=AT):
     softmax = lambda at: 1/(np.arange(at)+1)**3
     if method == 'teamdraft':
         initial_dist = np.ones((2,at),bool)
@@ -229,7 +262,7 @@ def run_experiment(click_model, interleaving):
       Ns = []
       pVictorys = []
       for rel_pair in _bin:
-          pVictory = simulate_online_experiment(rel_pair, pbm, interleaving_method='teamdraft')
+          pVictory = simulate_online_experiment(rel_pair, click_model, interleaving_method='teamdraft')
           n = estimate_sample_size(pVictory)
           Ns.append(n)
           pVictorys.append(pVictory)
