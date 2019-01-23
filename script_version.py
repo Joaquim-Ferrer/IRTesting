@@ -242,12 +242,6 @@ def run_experiment(click_model, interleaving):
           np.median(Ns),
           Ns.max()))
 
-
-#run_experiment(rcm, 'teamdraft')
-#run_experiment(rcm, 'probabilistic')
-run_experiment(pbm, 'teamdraft')
-run_experiment(pbm, 'probabilistic')
-
 def main():
     method = sys.argv[1]
     model = sys.argv[2]
